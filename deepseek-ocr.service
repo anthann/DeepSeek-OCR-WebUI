@@ -1,0 +1,37 @@
+[Unit]
+Description=DeepSeek-OCR Web Service
+Documentation=https://github.com/deepseek-ai/DeepSeek-OCR
+After=network.target
+
+[Service]
+Type=simple
+User=neo
+Group=neo
+WorkingDirectory=/home/neo/upload/DeepSeek-OCR
+Environment="PATH=/home/neo/anaconda3/envs/deepseek-ocr/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="CONDA_DEFAULT_ENV=deepseek-ocr"
+Environment="CONDA_PREFIX=/home/neo/anaconda3/envs/deepseek-ocr"
+Environment="CUDA_VISIBLE_DEVICES=0"
+Environment="VLLM_USE_V1=0"
+
+# 启动命令 (使用8001端口避免与其他服务冲突)
+ExecStart=/home/neo/anaconda3/envs/deepseek-ocr/bin/python /home/neo/upload/DeepSeek-OCR/web_service.py 8001
+
+# 重启策略
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=5
+
+# 资源限制
+LimitNOFILE=65536
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+# 日志配置
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=deepseek-ocr
+
+[Install]
+WantedBy=multi-user.target
