@@ -46,9 +46,6 @@ app.add_middleware(
 # 全局变量
 engine = None
 MODEL_PATH = 'deepseek-ai/DeepSeek-OCR'
-BASE_SIZE = 1024
-IMAGE_SIZE = 640
-CROP_MODE = True
 
 # vLLM相关类的全局引用
 AsyncLLMEngine = None
@@ -104,12 +101,21 @@ def load_image(image_data):
         raise HTTPException(status_code=400, detail=f"图像加载失败: {str(e)}")
 
 
-async def process_ocr(image: Image.Image, prompt: str) -> str:
+async def process_ocr(image: Image.Image, prompt: str, config: dict = None) -> str:
     """执行OCR处理"""
     global engine
     
+    print(f"process_ocr >>> {prompt}");
+    
+    # 使用传入的配置或默认配置
+    if config is None:
+        config = {"BASE_SIZE": 1024, "IMAGE_SIZE": 1024, "CROP_MODE": False}
+    
+    print(f"process_ocr >>> using config: {config}")
+    
     # 如果引擎还未初始化，先初始化
     if engine is None:
+        print(f"process_ocr >>>  load model first");
         load_vllm_engine()
         engine_args = AsyncEngineArgs(
             model=MODEL_PATH,
@@ -119,7 +125,7 @@ async def process_ocr(image: Image.Image, prompt: str) -> str:
             enforce_eager=False,
             trust_remote_code=True,
             tensor_parallel_size=1,
-            gpu_memory_utilization=0.6,
+            gpu_memory_utilization=0.9,
         )
         engine = AsyncLLMEngine.from_engine_args(engine_args)
         print("✓ vLLM引擎初始化成功")
@@ -130,7 +136,7 @@ async def process_ocr(image: Image.Image, prompt: str) -> str:
             images=[image], 
             bos=True, 
             eos=True, 
-            cropping=CROP_MODE
+            cropping=config["CROP_MODE"]
         )
     else:
         image_features = ''
@@ -167,6 +173,7 @@ async def process_ocr(image: Image.Image, prompt: str) -> str:
         if request_output.outputs:
             result_text = request_output.outputs[0].text
     
+    print(f"process_ocr <<<");
     return result_text
 
 
@@ -347,20 +354,38 @@ async def root():
 @app.post("/ocr")
 async def ocr_endpoint(
     file: UploadFile = File(...),
-    prompt_type: str = Form("document")
+    prompt_type: str = Form("document"),
+    custom_prompt: str = Form(None),
+    image_size: str = Form("Base")
 ):
     """OCR识别接口"""
-    
     # 根据prompt类型选择提示词
     prompt_templates = {
         "document": "<image>\n<|grounding|>Convert the document to markdown.",
         "ocr": "<image>\n<|grounding|>OCR this image.",
         "free": "<image>\nFree OCR.",
+        "custom": "<image>\nFree OCR.",
         "figure": "<image>\nParse the figure.",
         "describe": "<image>\nDescribe this image in detail.",
     }
     
-    prompt = prompt_templates.get(prompt_type, prompt_templates["document"])
+    # 如果是自定义模式且有自定义prompt，使用自定义prompt
+    if prompt_type == "custom" and custom_prompt is not None and len(custom_prompt) > 0:
+        prompt = custom_prompt
+    else:
+        prompt = prompt_templates.get(prompt_type, prompt_templates["document"])
+    
+    # 根据image_size参数设置图片处理参数
+    size_configs = {
+        "Tiny": {"BASE_SIZE": 512, "IMAGE_SIZE": 512, "CROP_MODE": False},
+        "Small": {"BASE_SIZE": 640, "IMAGE_SIZE": 640, "CROP_MODE": False},
+        "Base": {"BASE_SIZE": 1024, "IMAGE_SIZE": 1024, "CROP_MODE": False},
+        "Large": {"BASE_SIZE": 1280, "IMAGE_SIZE": 1280, "CROP_MODE": False},
+        "Gundam": {"BASE_SIZE": 1024, "IMAGE_SIZE": 640, "CROP_MODE": True}
+    }
+    
+    config = size_configs.get(image_size, size_configs["Base"])
+    print(f"process_ocr >>> image_size: {image_size}, config: {config}, prompt: {prompt}")
     
     try:
         # 读取上传的图片
@@ -368,19 +393,22 @@ async def ocr_endpoint(
         image = load_image(image_data)
         
         # 执行OCR
-        result_text = await process_ocr(image, prompt)
+        result_text = await process_ocr(image, prompt, config)
         
         # 清理结果
         # 移除grounding标记
-        pattern = r'(<\|ref\|>(.*?)<\|/ref\|><\|det\|>(.*?)<\|/det\|>)'
-        matches = re.findall(pattern, result_text, re.DOTALL)
-        for match in matches:
-            result_text = result_text.replace(match[0], '')
+        # pattern = r'(<\|ref\|>(.*?)<\|/ref\|><\|det\|>(.*?)<\|/det\|>)'
+        # matches = re.findall(pattern, result_text, re.DOTALL)
+        # for match in matches:
+        #     result_text = result_text.replace(match[0], '')
         
         return JSONResponse({
             "success": True,
             "text": result_text,
-            "prompt_type": prompt_type
+            "prompt_type": prompt_type,
+            "used_custom_prompt": prompt_type == "custom" and custom_prompt is not None,
+            "image_size": image_size,
+            "config": config
         })
         
     except Exception as e:
@@ -405,12 +433,12 @@ if __name__ == "__main__":
     import sys
     
     # 可以通过命令行参数指定端口
-    port = 8001
+    port = 8081
     if len(sys.argv) > 1:
         try:
             port = int(sys.argv[1])
         except:
-            port = 8001
+            port = 8081
     
     print("="*50)
     print("DeepSeek-OCR Web服务启动中...")

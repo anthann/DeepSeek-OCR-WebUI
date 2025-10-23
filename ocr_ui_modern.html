@@ -70,59 +70,57 @@
             animation: fadeInUp 0.6s ease-out;
         }
 
-        /* Mode Selector */
-        .mode-section {
-            padding: 30px;
+        /* Settings Row */
+        .settings-row {
+            padding: 20px 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            gap: 20px;
+            align-items: end;
         }
 
-        .mode-title {
+        .setting-group {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .setting-label {
+            display: block;
             color: white;
-            font-size: 1.3em;
+            font-size: 0.9em;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
         }
 
-        .mode-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-        }
-
-        .mode-option {
-            background: rgba(255,255,255,0.15);
-            border: 2px solid transparent;
-            padding: 16px;
-            border-radius: 12px;
+        .setting-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1em;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s;
             backdrop-filter: blur(10px);
         }
 
-        .mode-option:hover {
-            background: rgba(255,255,255,0.25);
-            transform: translateY(-2px);
+        .setting-select:hover {
+            border-color: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.15);
         }
 
-        .mode-option.active {
-            background: white;
+        .setting-select:focus {
+            outline: none;
             border-color: white;
-            color: var(--primary);
+            background: rgba(255,255,255,0.2);
         }
 
-        .mode-icon {
-            font-size: 2em;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        .mode-name {
-            font-weight: 600;
+        .setting-select option {
+            background: var(--dark);
             color: white;
-        }
-
-        .mode-option.active .mode-name {
-            color: var(--primary);
+            padding: 8px;
         }
 
         /* Upload Section */
@@ -162,8 +160,82 @@
             color: var(--text-light);
         }
 
+
         input[type="file"] {
             display: none;
+        }
+
+        /* Custom Prompt Section */
+        .custom-prompt-section {
+            margin-top: 30px;
+            padding: 24px;
+            background: var(--light);
+            border-radius: var(--radius);
+            border: 2px solid var(--border);
+            animation: fadeInUp 0.3s ease-out;
+        }
+
+        .prompt-header {
+            margin-bottom: 16px;
+        }
+
+        .prompt-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 6px;
+        }
+
+        .prompt-hint {
+            font-size: 0.9em;
+            color: var(--text-light);
+        }
+
+        .prompt-input-container {
+            position: relative;
+        }
+
+        .prompt-textarea {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 1em;
+            line-height: 1.6;
+            resize: vertical;
+            min-height: 100px;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .prompt-textarea::placeholder {
+            color: var(--text-light);
+        }
+
+        .prompt-char-count {
+            position: absolute;
+            bottom: 8px;
+            right: 12px;
+            font-size: 0.8em;
+            color: var(--text-light);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .prompt-char-count.warning {
+            color: var(--warning);
+        }
+
+        .prompt-char-count.error {
+            color: var(--danger);
         }
 
         /* Images Grid */
@@ -554,8 +626,13 @@
                 font-size: 1em;
             }
 
-            .mode-grid {
-                grid-template-columns: 1fr;
+            .settings-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .setting-group {
+                flex: none;
             }
 
             .upload-section,
@@ -768,30 +845,28 @@
 
         <!-- Main Card -->
         <div class="main-card">
-            <!-- Mode Selection -->
-            <div class="mode-section">
-                <div class="mode-title">选择识别模式</div>
-                <div class="mode-grid">
-                    <div class="mode-option active" data-mode="document">
-                        <span class="mode-icon">📄</span>
-                        <div class="mode-name">文档转Markdown</div>
-                    </div>
-                    <div class="mode-option" data-mode="ocr">
-                        <span class="mode-icon">📝</span>
-                        <div class="mode-name">通用OCR</div>
-                    </div>
-                    <div class="mode-option" data-mode="free">
-                        <span class="mode-icon">📋</span>
-                        <div class="mode-name">纯文本提取</div>
-                    </div>
-                    <div class="mode-option" data-mode="figure">
-                        <span class="mode-icon">📊</span>
-                        <div class="mode-name">图表解析</div>
-                    </div>
-                    <div class="mode-option" data-mode="describe">
-                        <span class="mode-icon">🖼️</span>
-                        <div class="mode-name">图像描述</div>
-                    </div>
+            <!-- Settings Row -->
+            <div class="settings-row">
+                <div class="setting-group">
+                    <label class="setting-label">识别模式</label>
+                    <select class="setting-select" id="modeSelect">
+                        <option value="document">📄 文档转Markdown</option>
+                        <option value="ocr">📝 通用OCR</option>
+                        <option value="free">📋 纯文本提取</option>
+                        <option value="figure">📊 图表解析</option>
+                        <option value="describe">🖼️ 图像描述</option>
+                        <option value="custom">⚙️ 自定义</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">图片尺寸</label>
+                    <select class="setting-select" id="sizeSelect">
+                        <option value="Base">Base (1024) - 平衡质量与速度</option>
+                        <option value="Large">Large (1280) - 最佳识别效果</option>
+                        <option value="Small">Small (640) - 处理速度优先</option>
+                        <option value="Tiny">Tiny (512) - 最快处理速度</option>
+                        <option value="Gundam">Gundam - 智能裁剪模式</option>
+                    </select>
                 </div>
             </div>
 
@@ -802,6 +877,25 @@
                     <div class="upload-text">拖拽图片到这里或点击上传</div>
                     <div class="upload-hint">支持多张图片批量上传，可调整处理顺序</div>
                     <input type="file" id="fileInput" multiple accept="image/*">
+                </div>
+                
+                <!-- Custom Prompt Section -->
+                <div class="custom-prompt-section" id="customPromptSection" style="display: none;">
+                    <div class="prompt-header">
+                        <div class="prompt-title">自定义提示词</div>
+                        <div class="prompt-hint">输入您希望AI执行的具体指令</div>
+                    </div>
+                    <div class="prompt-input-container">
+                        <textarea 
+                            id="customPromptInput" 
+                            class="prompt-textarea" 
+                            placeholder="例如：请提取图片中的所有文字，并按照原始格式排列..."
+                            rows="3"
+                        ></textarea>
+                        <div class="prompt-char-count">
+                            <span id="promptCharCount">0</span> / 500 字符
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -881,12 +975,14 @@
         // Configuration
         const CONFIG = {
             apiUrl: `http://${window.location.host}`,
-            maxConcurrent: 1 // 逐一处理
+            maxConcurrent: 1, // 逐一处理
+            previewMaxSize: 200 // 预览图片最大尺寸
         };
 
         // State
         const state = {
             mode: 'document',
+            imageSize: 'Base',
             images: [],
             results: [],
             isProcessing: false
@@ -896,6 +992,11 @@
         const elements = {
             uploadArea: document.getElementById('uploadArea'),
             fileInput: document.getElementById('fileInput'),
+            modeSelect: document.getElementById('modeSelect'),
+            sizeSelect: document.getElementById('sizeSelect'),
+            customPromptSection: document.getElementById('customPromptSection'),
+            customPromptInput: document.getElementById('customPromptInput'),
+            promptCharCount: document.getElementById('promptCharCount'),
             imagesSection: document.getElementById('imagesSection'),
             imagesGrid: document.getElementById('imagesGrid'),
             imageCount: document.getElementById('imageCount'),
@@ -920,10 +1021,11 @@
 
         // Initialize
         function init() {
-            setupModeSelector();
+            setupSelectors();
             setupUpload();
             setupButtons();
             setupDragAndDrop();
+            setupCustomPrompt();
             
             // 显示日志区域
             elements.logSection.classList.add('active');
@@ -933,7 +1035,8 @@
                 '系统版本': 'v2.0',
                 '服务地址': CONFIG.apiUrl,
                 '支持格式': 'JPG, PNG, JPEG, BMP, GIF',
-                '识别模式': '5种模式可选'
+                '识别模式': '6种模式可选（含自定义）',
+                '图片尺寸': '5种处理模式可选'
             });
         }
 
@@ -985,7 +1088,87 @@
             elements.logContent.scrollTop = 0;
         }
 
-        // Mode Selector
+        // Setup Selectors
+        function setupSelectors() {
+            // Mode selector
+            elements.modeSelect.addEventListener('change', (e) => {
+                const oldMode = state.mode;
+                const newMode = e.target.value;
+                
+                if (oldMode === newMode) return;
+                
+                state.mode = newMode;
+                const modeName = e.target.options[e.target.selectedIndex].textContent;
+                
+                // 显示或隐藏自定义prompt区域
+                if (newMode === 'custom') {
+                    elements.customPromptSection.style.display = 'block';
+                } else {
+                    elements.customPromptSection.style.display = 'none';
+                }
+                
+                // 检查是否已经完成识别
+                const hasCompletedImages = state.images.some(img => img.status === 'completed' || img.status === 'error');
+                
+                if (hasCompletedImages) {
+                    // 重置所有图片状态为待处理
+                    const completedCount = state.images.filter(img => img.status === 'completed').length;
+                    const errorCount = state.images.filter(img => img.status === 'error').length;
+                    
+                    state.images.forEach(img => {
+                        img.status = 'pending';
+                        img.result = null;
+                    });
+                    
+                    // 清空之前的识别结果
+                    state.results = [];
+                    
+                    // 隐藏进度和结果区域
+                    elements.progressSection.classList.remove('active');
+                    elements.resultSection.classList.remove('active');
+                    
+                    // 重新渲染图片（清除状态标签）
+                    renderImages();
+                    
+                    // 更新UI状态（使按钮可点击）
+                    updateUI();
+                    
+                    showToast(`已切换到: ${modeName}，可以重新识别`, 'info');
+                    addLog('切换识别模式', 'success', `从 [${getModeDisplayName(oldMode)}] 切换到 [${modeName}]，已重置识别状态`, {
+                        '新模式': modeName,
+                        '适用场景': getModeDescription(state.mode),
+                        '图片数量': `${state.images.length} 张`,
+                        '已重置': `${completedCount} 张已完成，${errorCount} 张失败`,
+                        '当前状态': '准备重新识别'
+                    });
+                } else {
+                    showToast(`已切换到: ${modeName}`, 'info');
+                    addLog('切换识别模式', 'info', `从 [${getModeDisplayName(oldMode)}] 切换到 [${modeName}]`, {
+                        '当前模式': modeName,
+                        '适用场景': getModeDescription(state.mode)
+                    });
+                }
+            });
+
+            // Size selector
+            elements.sizeSelect.addEventListener('change', (e) => {
+                const oldSize = state.imageSize;
+                const newSize = e.target.value;
+                
+                if (oldSize === newSize) return;
+                
+                state.imageSize = newSize;
+                const sizeName = e.target.options[e.target.selectedIndex].textContent;
+                
+                showToast(`已切换到: ${sizeName}`, 'info');
+                addLog('切换图片尺寸', 'info', `从 [${getSizeDisplayName(oldSize)}] 切换到 [${sizeName}]`, {
+                    '当前尺寸': sizeName,
+                    '适用场景': getSizeDescription(newSize)
+                });
+            });
+        }
+
+        // Mode Selector (Legacy)
         function setupModeSelector() {
             document.querySelectorAll('.mode-option').forEach(option => {
                 option.addEventListener('click', () => {
@@ -999,6 +1182,13 @@
                     option.classList.add('active');
                     state.mode = newMode;
                     const modeName = option.querySelector('.mode-name').textContent;
+                    
+                    // 显示或隐藏自定义prompt区域
+                    if (newMode === 'custom') {
+                        elements.customPromptSection.style.display = 'block';
+                    } else {
+                        elements.customPromptSection.style.display = 'none';
+                    }
                     
                     // 检查是否已经完成识别
                     const hasCompletedImages = state.images.some(img => img.status === 'completed' || img.status === 'error');
@@ -1062,9 +1252,76 @@
                 'ocr': '提取所有可见文字',
                 'free': '纯文本不保留格式',
                 'figure': '识别图表公式等',
-                'describe': '生成详细图像描述'
+                'describe': '生成详细图像描述',
+                'custom': '使用自定义提示词'
             };
             return descriptions[mode] || '未知';
+        }
+
+        // Setup Custom Prompt
+        function setupCustomPrompt() {
+            elements.customPromptInput.addEventListener('input', (e) => {
+                const length = e.target.value.length;
+                elements.promptCharCount.textContent = length;
+                
+                // 更新字符计数样式
+                elements.promptCharCount.className = 'prompt-char-count';
+                if (length > 400) {
+                    elements.promptCharCount.classList.add('warning');
+                }
+                if (length > 500) {
+                    elements.promptCharCount.classList.add('error');
+                }
+            });
+        }
+
+        // Size Selector
+        function setupSizeSelector() {
+            document.querySelectorAll('.size-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const oldSize = state.imageSize;
+                    const newSize = option.dataset.size;
+                    
+                    // 如果尺寸相同，不做任何操作
+                    if (oldSize === newSize) return;
+                    
+                    document.querySelectorAll('.size-option').forEach(o => o.classList.remove('active'));
+                    option.classList.add('active');
+                    state.imageSize = newSize;
+                    
+                    const sizeName = option.querySelector('.size-name').textContent;
+                    const sizeDesc = option.querySelector('.size-desc').textContent;
+                    
+                    showToast(`已切换到: ${sizeName}`, 'info');
+                    addLog('切换图片尺寸', 'info', `从 [${getSizeDisplayName(oldSize)}] 切换到 [${sizeName}]`, {
+                        '当前尺寸': sizeName,
+                        '处理说明': sizeDesc,
+                        '适用场景': getSizeDescription(newSize)
+                    });
+                });
+            });
+        }
+
+        function getSizeDisplayName(size) {
+            const names = {
+                'Tiny': 'Tiny (512)',
+                'Small': 'Small (640)',
+                'Base': 'Base (1024)',
+                'Large': 'Large (1280)',
+                'Gundam': 'Gundam (裁剪模式)'
+            };
+            return names[size] || size;
+        }
+
+        function getSizeDescription(size) {
+            const descriptions = {
+                'Tiny': '最快处理速度，适合简单文档',
+                'Small': '处理速度优先，适合一般文档',
+                'Base': '平衡质量与速度，推荐使用',
+                'Large': '最佳识别效果，适合复杂文档',
+                'Gundam': '智能裁剪，适合长文档'
+            };
+            return descriptions[size] || '未知';
         }
 
         // Upload Setup
@@ -1096,7 +1353,7 @@
         }
 
         // Handle Files
-        function handleFiles(files) {
+        async function handleFiles(files) {
             const totalFiles = files.length;
             const validFiles = files.filter(file => file.type.startsWith('image/'));
             const invalidCount = totalFiles - validFiles.length;
@@ -1111,8 +1368,9 @@
                 return;
             }
 
+
             const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
-            addLog('开始上传图片', 'info', `正在处理 ${validFiles.length} 张图片...`, {
+            addLog('开始处理图片', 'info', `正在生成 ${validFiles.length} 张图片的预览...`, {
                 '有效文件': `${validFiles.length} 张`,
                 '无效文件': `${invalidCount} 个`,
                 '总大小': formatFileSize(totalSize),
@@ -1120,39 +1378,41 @@
             });
 
             let loadedCount = 0;
-            validFiles.forEach((file, index) => {
-                const id = Date.now() + Math.random();
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
+            for (const file of validFiles) {
+                try {
+                    const id = Date.now() + Math.random();
+                    
+                    // 生成压缩预览
+                    const compressedPreview = await compressImage(file, CONFIG.previewMaxSize, CONFIG.previewMaxSize, 0.7);
+                    
                     state.images.push({
                         id,
-                        file,
+                        file, // 保存原始文件引用
                         name: file.name,
                         size: formatFileSize(file.size),
-                        preview: e.target.result,
+                        preview: compressedPreview, // 使用压缩后的预览
                         status: 'pending',
                         result: null
                     });
+                    
                     renderImages();
                     updateUI();
                     
                     loadedCount++;
                     if (loadedCount === validFiles.length) {
-                        addLog('图片上传完成', 'success', `所有图片已加载到队列`, {
+                        addLog('图片处理完成', 'success', `所有图片已加载到队列`, {
                             '成功加载': `${validFiles.length} 张`,
                             '当前队列': `${state.images.length} 张`,
-                            '识别模式': getModeDisplayName(state.mode)
+                            '识别模式': getModeDisplayName(state.mode),
+                            '内存优化': '使用压缩预览'
                         });
                     }
-                };
-                
-                reader.onerror = () => {
-                    addLog(`图片加载失败`, 'error', `无法读取: ${file.name}`);
-                };
-                
-                reader.readAsDataURL(file);
-            });
+                } catch (error) {
+                    addLog(`图片处理失败`, 'error', `无法处理: ${file.name}`, {
+                        '错误': error.message
+                    });
+                }
+            }
 
             showToast(`添加了 ${validFiles.length} 张图片`, 'success');
         }
@@ -1286,6 +1546,19 @@
                 });
                 return;
             }
+            
+            // 如果是自定义模式，检查是否输入了prompt
+            if (state.mode === 'custom') {
+                const customPrompt = elements.customPromptInput.value.trim();
+                if (!customPrompt) {
+                    showToast('请输入自定义提示词', 'error');
+                    addLog('无法开始识别', 'error', '自定义模式下必须输入提示词', {
+                        '当前模式': '自定义',
+                        '操作建议': '在上方输入框中输入您的指令'
+                    });
+                    return;
+                }
+            }
 
             const startTime = Date.now();
             state.isProcessing = true;
@@ -1294,12 +1567,22 @@
             elements.resultSection.classList.remove('active');
             updateUI();
 
-            addLog('开始批量识别', 'success', `准备处理 ${state.images.length} 张图片`, {
+            const logData = {
                 '图片数量': `${state.images.length} 张`,
                 '识别模式': getModeDisplayName(state.mode),
+                '图片尺寸': getSizeDisplayName(state.imageSize),
                 '处理方式': '逐一顺序处理',
                 '预计时间': `约 ${Math.ceil(state.images.length * 0.5)}-${state.images.length} 分钟`
-            });
+            };
+            
+            // 如果是自定义模式，添加prompt信息
+            if (state.mode === 'custom') {
+                const customPrompt = elements.customPromptInput.value.trim();
+                logData['自定义提示词'] = customPrompt.length > 50 ? customPrompt.substring(0, 50) + '...' : customPrompt;
+                logData['提示词长度'] = `${customPrompt.length} 字符`;
+            }
+            
+            addLog('开始批量识别', 'success', `准备处理 ${state.images.length} 张图片`, logData);
 
             const total = state.images.length;
             let processed = 0;
@@ -1370,6 +1653,7 @@
 
             state.isProcessing = false;
             showResult();
+            updateUI(); // 更新按钮状态
             showToast('所有图片识别完成！', 'success');
             
             addLog('批量识别完成', 'success', `所有图片处理完毕，结果已生成`, {
@@ -1386,8 +1670,18 @@
         // Process Single Image
         async function processImage(image) {
             const formData = new FormData();
+            // 直接使用原始文件对象，而不是base64数据
             formData.append('file', image.file);
             formData.append('prompt_type', state.mode);
+            formData.append('image_size', state.imageSize);
+            
+            // 如果是自定义模式，添加自定义prompt
+            if (state.mode === 'custom') {
+                const customPrompt = elements.customPromptInput.value.trim();
+                if (customPrompt) {
+                    formData.append('custom_prompt', customPrompt);
+                }
+            }
 
             const response = await fetch(`${CONFIG.apiUrl}/ocr`, {
                 method: 'POST',
@@ -1545,6 +1839,44 @@
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
             return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // 图片压缩函数
+        function compressImage(file, maxWidth = 200, maxHeight = 200, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    // 计算压缩后的尺寸
+                    let { width, height } = img;
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = (width * maxHeight) / height;
+                            height = maxHeight;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // 绘制压缩后的图片
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 转换为base64
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(compressedDataUrl);
+                };
+                
+                img.onerror = () => reject(new Error('图片加载失败'));
+                img.src = URL.createObjectURL(file);
+            });
         }
 
         function getStatusText(status) {
