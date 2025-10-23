@@ -379,6 +379,26 @@
             background: rgba(239, 68, 68, 0.9);
         }
 
+        .ocr-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .image-card:hover .ocr-hint {
+            opacity: 1;
+        }
+
         /* Action Buttons */
         .action-buttons {
             display: flex;
@@ -568,6 +588,105 @@
 
         .toast-message {
             font-weight: 500;
+        }
+
+        /* OCR Editor Modal */
+        .ocr-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ocr-modal.active {
+            display: flex;
+        }
+
+        .ocr-modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90%;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .ocr-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--light);
+        }
+
+        .ocr-modal-header h3 {
+            margin: 0;
+            color: var(--dark);
+            font-size: 1.3em;
+        }
+
+        .ocr-close {
+            background: none;
+            border: none;
+            font-size: 2em;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .ocr-close:hover {
+            background: var(--border);
+            color: var(--dark);
+        }
+
+        .ocr-modal-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .ocr-canvas-container {
+            display: flex;
+            justify-content: center;
+            background: var(--light);
+            border-radius: 8px;
+            padding: 20px;
+            overflow: auto;
+            max-height: 60vh;
+        }
+
+        .ocr-canvas-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .ocr-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .ocr-controls .btn {
+            min-width: 120px;
         }
 
         /* Animations */
@@ -851,7 +970,7 @@
                     <label class="setting-label">识别模式</label>
                     <select class="setting-select" id="modeSelect">
                         <option value="document">📄 文档转Markdown</option>
-                        <option value="ocr">📝 通用OCR</option>
+                        <option value="ocr" selected>📝 通用OCR</option>
                         <option value="free">📋 纯文本提取</option>
                         <option value="figure">📊 图表解析</option>
                         <option value="describe">🖼️ 图像描述</option>
@@ -865,7 +984,7 @@
                         <option value="Large">Large (1280) - 最佳识别效果</option>
                         <option value="Small">Small (640) - 处理速度优先</option>
                         <option value="Tiny">Tiny (512) - 最快处理速度</option>
-                        <option value="Gundam">Gundam - 智能裁剪模式</option>
+                        <option value="Gundam" selected>Gundam - 智能裁剪模式</option>
                     </select>
                 </div>
             </div>
@@ -971,6 +1090,26 @@
         <span class="toast-message" id="toastMessage">操作成功</span>
     </div>
 
+    <!-- OCR Editor Modal -->
+    <div class="ocr-modal" id="ocrModal">
+        <div class="ocr-modal-content">
+            <div class="ocr-modal-header">
+                <h3>OCR结果可视化</h3>
+                <button class="ocr-close" onclick="closeOcrEditor()">×</button>
+            </div>
+            <div class="ocr-modal-body">
+                <div class="ocr-canvas-container">
+                    <canvas id="ocrCanvas"></canvas>
+                </div>
+                <div class="ocr-controls">
+                    <button class="btn btn-secondary" onclick="toggleDetectionBoxes()">切换检测框</button>
+                    <button class="btn btn-secondary" onclick="toggleTextLabels()">切换文本标签</button>
+                    <button class="btn btn-primary" onclick="downloadOcrImage()">下载图片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Configuration
         const CONFIG = {
@@ -981,8 +1120,8 @@
 
         // State
         const state = {
-            mode: 'document',
-            imageSize: 'Base',
+            mode: 'ocr',
+            imageSize: 'Gundam',
             images: [],
             results: [],
             isProcessing: false
@@ -1419,18 +1558,25 @@
 
         // Render Images
         function renderImages() {
-            elements.imagesGrid.innerHTML = state.images.map((img, index) => `
-                <div class="image-card" draggable="true" data-id="${img.id}">
-                    <div class="image-order">${index + 1}</div>
-                    <button class="image-remove" onclick="removeImage('${img.id}')">×</button>
-                    <img src="${img.preview}" alt="${img.name}" class="image-preview">
-                    <div class="image-info">
-                        <div class="image-name" title="${img.name}">${img.name}</div>
-                        <div class="image-size">${img.size}</div>
+            elements.imagesGrid.innerHTML = state.images.map((img, index) => {
+                const isOcrCompleted = state.mode === 'ocr' && img.status === 'completed';
+                const clickHandler = isOcrCompleted ? `onclick="showOcrEditor('${img.id}')"` : '';
+                const cursorStyle = isOcrCompleted ? 'style="cursor: pointer;"' : '';
+                
+                return `
+                    <div class="image-card" draggable="true" data-id="${img.id}" ${clickHandler} ${cursorStyle}>
+                        <div class="image-order">${index + 1}</div>
+                        <button class="image-remove" onclick="removeImage('${img.id}')">×</button>
+                        <img src="${img.preview}" alt="${img.name}" class="image-preview">
+                        <div class="image-info">
+                            <div class="image-name" title="${img.name}">${img.name}</div>
+                            <div class="image-size">${img.size}</div>
+                        </div>
+                        ${img.status !== 'pending' ? `<div class="image-status status-${img.status}">${getStatusText(img.status)}</div>` : ''}
+                        ${isOcrCompleted ? '<div class="ocr-hint">点击查看OCR结果</div>' : ''}
                     </div>
-                    ${img.status !== 'pending' ? `<div class="image-status status-${img.status}">${getStatusText(img.status)}</div>` : ''}
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             setupImageDragAndDrop();
         }
@@ -1904,6 +2050,151 @@
                 elements.toast.classList.remove('active');
             }, 3000);
         }
+
+        // OCR Editor Functions
+        let ocrEditorState = {
+            showBoxes: true,
+            showLabels: true,
+            currentImage: null,
+            ocrData: null
+        };
+
+        // Show OCR Editor
+        window.showOcrEditor = function(imageId) {
+            const image = state.images.find(img => img.id == imageId);
+            if (!image || !image.result) return;
+
+            ocrEditorState.currentImage = image;
+            ocrEditorState.ocrData = parseOcrResult(image.result);
+            
+            if (!ocrEditorState.ocrData || ocrEditorState.ocrData.length === 0) {
+                showToast('OCR结果格式不正确', 'error');
+                return;
+            }
+
+            document.getElementById('ocrModal').classList.add('active');
+            drawOcrCanvas();
+        };
+
+        // Close OCR Editor
+        window.closeOcrEditor = function() {
+            document.getElementById('ocrModal').classList.remove('active');
+            ocrEditorState.currentImage = null;
+            ocrEditorState.ocrData = null;
+        };
+
+        // Parse OCR Result
+        function parseOcrResult(result) {
+            const lines = result.split('\n').filter(line => line.trim());
+            const ocrData = [];
+
+            for (const line of lines) {
+                const match = line.match(/<\|ref\|>(.*?)<\|\/ref\|><\|det\|>\[\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]\]<\|\/det\|>/);
+                if (match) {
+                    ocrData.push({
+                        text: match[1],
+                        bbox: {
+                            x: parseInt(match[2]),
+                            y: parseInt(match[3]),
+                            x2: parseInt(match[4]),
+                            y2: parseInt(match[5])
+                        }
+                    });
+                }
+            }
+
+            return ocrData;
+        }
+
+        // Draw OCR Canvas
+        function drawOcrCanvas() {
+            const canvas = document.getElementById('ocrCanvas');
+            const ctx = canvas.getContext('2d');
+            const image = ocrEditorState.currentImage;
+            
+            // Load original image from file
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Set canvas size
+                    const maxWidth = 800;
+                    const maxHeight = 600;
+                    let { width, height } = img;
+                    
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width *= ratio;
+                        height *= ratio;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // Draw image
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // OCR coordinates are normalized to 999x999, need to convert to canvas coordinates
+                    const scaleX = width / 999;
+                    const scaleY = height / 999;
+                    
+                    console.log('Canvas dimensions:', width, 'x', height);
+                    console.log('Image natural dimensions:', img.naturalWidth, 'x', img.naturalHeight);
+                    console.log('OCR scale factors (999-based):', scaleX, scaleY);
+                    
+                    // Draw OCR results
+                    ocrEditorState.ocrData.forEach(item => {
+                        const bbox = item.bbox;
+                        console.log('Original bbox:', bbox);
+                        
+                        // Convert OCR coordinates (based on 999x999) to canvas coordinates
+                        const scaledX = bbox.x * scaleX;
+                        const scaledY = bbox.y * scaleY;
+                        const scaledW = (bbox.x2 - bbox.x) * scaleX;
+                        const scaledH = (bbox.y2 - bbox.y) * scaleY;
+                        
+                        console.log('Scaled bbox:', {x: scaledX, y: scaledY, w: scaledW, h: scaledH});
+                        
+                        if (ocrEditorState.showBoxes) {
+                            // Draw detection box
+                            ctx.strokeStyle = '#ff0000';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(scaledX, scaledY, scaledW, scaledH);
+                        }
+                        
+                        if (ocrEditorState.showLabels) {
+                            // Draw text label
+                            ctx.fillStyle = '#ff0000';
+                            ctx.font = '12px Arial';
+                            ctx.fillText(item.text, scaledX, scaledY - 5);
+                        }
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(image.file);
+        }
+
+        // Toggle Detection Boxes
+        window.toggleDetectionBoxes = function() {
+            ocrEditorState.showBoxes = !ocrEditorState.showBoxes;
+            drawOcrCanvas();
+        };
+
+        // Toggle Text Labels
+        window.toggleTextLabels = function() {
+            ocrEditorState.showLabels = !ocrEditorState.showLabels;
+            drawOcrCanvas();
+        };
+
+        // Download OCR Image
+        window.downloadOcrImage = function() {
+            const canvas = document.getElementById('ocrCanvas');
+            const link = document.createElement('a');
+            link.download = `ocr_result_${ocrEditorState.currentImage.name}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        };
 
         // Initialize app
         init();

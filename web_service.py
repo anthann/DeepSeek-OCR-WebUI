@@ -354,9 +354,9 @@ async def root():
 @app.post("/ocr")
 async def ocr_endpoint(
     file: UploadFile = File(...),
-    prompt_type: str = Form("document"),
+    prompt_type: str = Form("ocr"),
     custom_prompt: str = Form(None),
-    image_size: str = Form("Base")
+    image_size: str = Form("Gundam")
 ):
     """OCR识别接口"""
     # 根据prompt类型选择提示词
@@ -384,7 +384,7 @@ async def ocr_endpoint(
         "Gundam": {"BASE_SIZE": 1024, "IMAGE_SIZE": 640, "CROP_MODE": True}
     }
     
-    config = size_configs.get(image_size, size_configs["Base"])
+    config = size_configs.get(image_size, size_configs["Gundam"])
     print(f"process_ocr >>> image_size: {image_size}, config: {config}, prompt: {prompt}")
     
     try:
