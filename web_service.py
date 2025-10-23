@@ -132,7 +132,15 @@ async def process_ocr(image: Image.Image, prompt: str, config: dict = None) -> s
     
     # 处理图像
     if '<image>' in prompt:
-        image_features = DeepseekOCRProcessor().tokenize_with_images(
+        # 创建处理器实例，使用动态配置
+        processor = DeepseekOCRProcessor()
+        # 直接设置实例属性
+        processor.base_size = config["BASE_SIZE"]
+        processor.image_size = config["IMAGE_SIZE"]
+        
+        print(f"process_ocr >>> Using dynamic config - BASE_SIZE: {config['BASE_SIZE']}, IMAGE_SIZE: {config['IMAGE_SIZE']}, CROP_MODE: {config['CROP_MODE']}")
+        
+        image_features = processor.tokenize_with_images(
             images=[image], 
             bos=True, 
             eos=True, 
