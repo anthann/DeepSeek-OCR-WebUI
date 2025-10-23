@@ -668,14 +668,25 @@
             border-radius: 8px;
             padding: 20px;
             overflow: auto;
-            max-height: 60vh;
+            max-height: 80vh;
+            max-width: 90vw;
+            /* Enable smooth scrolling */
+            scroll-behavior: smooth;
         }
 
         .ocr-canvas-container canvas {
-            max-width: 100%;
-            max-height: 100%;
+            /* Remove size restrictions to allow full resolution */
             border: 1px solid var(--border);
             border-radius: 4px;
+            /* Optimize image rendering for crisp display */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            /* Ensure canvas doesn't shrink below its natural size */
+            min-width: auto;
+            min-height: auto;
+            /* Enable hover cursor */
+            cursor: crosshair;
         }
 
         .ocr-controls {
@@ -1102,9 +1113,12 @@
                     <canvas id="ocrCanvas"></canvas>
                 </div>
                 <div class="ocr-controls">
-                    <button class="btn btn-secondary" onclick="toggleDetectionBoxes()">切换检测框</button>
-                    <button class="btn btn-secondary" onclick="toggleTextLabels()">切换文本标签</button>
+                    <button class="btn btn-secondary" onclick="toggleDetectionBoxes()">刷新检测框</button>
+                    <button class="btn btn-secondary" onclick="toggleTextLabels()">刷新显示</button>
                     <button class="btn btn-primary" onclick="downloadOcrImage()">下载图片</button>
+                </div>
+                <div class="ocr-hint">
+                    <span>💡 提示：将鼠标悬停在检测框上可查看识别内容</span>
                 </div>
             </div>
         </div>
@@ -2117,37 +2131,54 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // Set canvas size
-                    const maxWidth = 800;
-                    const maxHeight = 600;
+                    // Get device pixel ratio for high DPI support
+                    const devicePixelRatio = window.devicePixelRatio || 1;
+                    
+                    // Calculate optimal canvas size (larger limits for HD display)
+                    const maxDisplayWidth = 1200;
+                    const maxDisplayHeight = 900;
                     let { width, height } = img;
                     
-                    if (width > maxWidth || height > maxHeight) {
-                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    // Scale down only if image is very large, but keep it reasonably sized
+                    if (width > maxDisplayWidth || height > maxDisplayHeight) {
+                        const ratio = Math.min(maxDisplayWidth / width, maxDisplayHeight / height);
                         width *= ratio;
                         height *= ratio;
                     }
                     
-                    canvas.width = width;
-                    canvas.height = height;
+                    // Set canvas display size
+                    canvas.style.width = width + 'px';
+                    canvas.style.height = height + 'px';
                     
-                    // Draw image
+                    // Set canvas actual size (with device pixel ratio for crisp rendering)
+                    canvas.width = width * devicePixelRatio;
+                    canvas.height = height * devicePixelRatio;
+                    
+                    // Scale the drawing context to match device pixel ratio
+                    ctx.scale(devicePixelRatio, devicePixelRatio);
+                    
+                    // Draw image at display size
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // OCR coordinates are normalized to 999x999, need to convert to canvas coordinates
+                    // OCR coordinates are normalized to 999x999, need to convert to canvas display coordinates
                     const scaleX = width / 999;
                     const scaleY = height / 999;
                     
-                    console.log('Canvas dimensions:', width, 'x', height);
+                    console.log('Canvas display dimensions:', width, 'x', height);
+                    console.log('Canvas actual dimensions:', canvas.width, 'x', canvas.height);
                     console.log('Image natural dimensions:', img.naturalWidth, 'x', img.naturalHeight);
+                    console.log('Device pixel ratio:', devicePixelRatio);
                     console.log('OCR scale factors (999-based):', scaleX, scaleY);
                     
-                    // Draw OCR results
-                    ocrEditorState.ocrData.forEach(item => {
+                    // Store scaled bounding boxes for hover detection
+                    ocrEditorState.scaledBoxes = [];
+                    
+                    // Draw OCR results - only bounding boxes by default
+                    ocrEditorState.ocrData.forEach((item, index) => {
                         const bbox = item.bbox;
                         console.log('Original bbox:', bbox);
                         
-                        // Convert OCR coordinates (based on 999x999) to canvas coordinates
+                        // Convert OCR coordinates (based on 999x999) to canvas display coordinates
                         const scaledX = bbox.x * scaleX;
                         const scaledY = bbox.y * scaleY;
                         const scaledW = (bbox.x2 - bbox.x) * scaleX;
@@ -2155,35 +2186,204 @@
                         
                         console.log('Scaled bbox:', {x: scaledX, y: scaledY, w: scaledW, h: scaledH});
                         
-                        if (ocrEditorState.showBoxes) {
-                            // Draw detection box
-                            ctx.strokeStyle = '#ff0000';
-                            ctx.lineWidth = 2;
-                            ctx.strokeRect(scaledX, scaledY, scaledW, scaledH);
-                        }
+                        // Store scaled box info for hover detection
+                        ocrEditorState.scaledBoxes.push({
+                            x: scaledX,
+                            y: scaledY,
+                            width: scaledW,
+                            height: scaledH,
+                            text: item.text,
+                            index: index
+                        });
                         
-                        if (ocrEditorState.showLabels) {
-                            // Draw text label
-                            ctx.fillStyle = '#ff0000';
-                            ctx.font = '12px Arial';
-                            ctx.fillText(item.text, scaledX, scaledY - 5);
-                        }
+                        // Draw detection box with high visibility
+                        ctx.strokeStyle = '#ff0000';
+                        ctx.lineWidth = Math.max(2, 2 / devicePixelRatio);
+                        ctx.strokeRect(scaledX, scaledY, scaledW, scaledH);
                     });
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(image.file);
+            
+            // Add mouse event listeners for hover detection (only once)
+            if (!canvas.hasAttribute('data-hover-events')) {
+                setupCanvasHoverEvents(canvas);
+                canvas.setAttribute('data-hover-events', 'true');
+            }
+        }
+        
+        // Setup Canvas Hover Events
+        function setupCanvasHoverEvents(canvas) {
+            // Check if tooltip already exists
+            let tooltip = document.getElementById('ocr-tooltip');
+            if (!tooltip) {
+                tooltip = document.createElement('div');
+                tooltip.id = 'ocr-tooltip';
+                tooltip.style.cssText = `
+                    position: fixed;
+                    background: rgba(255, 0, 0, 0.95);
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    font-weight: 600;
+                    pointer-events: none;
+                    z-index: 9999;
+                    max-width: 300px;
+                    word-wrap: break-word;
+                    box-shadow: 0 4px 12px rgba(255, 0, 0, 0.5);
+                    opacity: 0;
+                    transition: all 0.2s ease;
+                    transform: translateY(5px);
+                    white-space: nowrap;
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                `;
+                document.body.appendChild(tooltip);
+            }
+            
+            let currentHoverBox = null;
+            let hoverTimeout = null;
+            
+            // Throttle mousemove events for better performance
+            let lastMouseMoveTime = 0;
+            const MOUSE_MOVE_THROTTLE = 16; // ~60fps
+            
+            canvas.addEventListener('mousemove', function(e) {
+                const now = Date.now();
+                if (now - lastMouseMoveTime < MOUSE_MOVE_THROTTLE) {
+                    return; // Skip this event for throttling
+                }
+                lastMouseMoveTime = now;
+                const rect = canvas.getBoundingClientRect();
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                
+                // Calculate mouse position relative to canvas display size (not actual canvas size)
+                const mouseX = (e.clientX - rect.left) * (canvas.width / devicePixelRatio) / rect.width;
+                const mouseY = (e.clientY - rect.top) * (canvas.height / devicePixelRatio) / rect.height;
+                
+                // Find which box the mouse is hovering over
+                const hoverBox = ocrEditorState.scaledBoxes.find(box => 
+                    mouseX >= box.x && mouseX <= box.x + box.width &&
+                    mouseY >= box.y && mouseY <= box.y + box.height
+                );
+                
+                console.log('Mouse position:', mouseX, mouseY);
+                console.log('Hover box found:', hoverBox);
+                console.log('Available boxes:', ocrEditorState.scaledBoxes.length);
+                
+                if (hoverBox && hoverBox !== currentHoverBox) {
+                    console.log('Showing tooltip for:', hoverBox.text);
+                    
+                    // Clear any existing timeout
+                    if (hoverTimeout) {
+                        clearTimeout(hoverTimeout);
+                    }
+                    
+                    // Hide previous tooltip immediately
+                    if (currentHoverBox) {
+                        tooltip.style.opacity = '0';
+                        tooltip.style.transform = 'translateY(5px)';
+                    }
+                    
+                    currentHoverBox = hoverBox;
+                    
+                    // Show tooltip with animation - positioned directly above mouse
+                    tooltip.textContent = hoverBox.text;
+                    tooltip.style.opacity = '1';
+                    tooltip.style.transform = 'translateY(0)';
+                    
+                    // Force a reflow to get accurate dimensions
+                    tooltip.offsetHeight;
+                    
+                    // Position tooltip directly above mouse cursor
+                    const tooltipX = e.clientX;
+                    const tooltipY = e.clientY - 50; // Position above mouse with more space
+                    
+                    // Get actual tooltip dimensions
+                    const tooltipWidth = tooltip.offsetWidth;
+                    const tooltipHeight = tooltip.offsetHeight;
+                    
+                    // Center tooltip horizontally relative to mouse
+                    let finalX = tooltipX - (tooltipWidth / 2);
+                    let finalY = tooltipY;
+                    
+                    // Adjust if tooltip would go off screen
+                    if (finalX < 10) {
+                        finalX = 10; // Keep some margin from left edge
+                    } else if (finalX + tooltipWidth > window.innerWidth - 10) {
+                        finalX = window.innerWidth - tooltipWidth - 10; // Keep margin from right edge
+                    }
+                    
+                    if (finalY < 10) {
+                        finalY = e.clientY + 20; // Show below mouse if not enough space above
+                    }
+                    
+                    tooltip.style.left = finalX + 'px';
+                    tooltip.style.top = finalY + 'px';
+                    
+                    console.log('Tooltip positioned at:', finalX, finalY);
+                    
+                    // Don't highlight on canvas - only show tooltip
+                } else if (!hoverBox && currentHoverBox) {
+                    console.log('Hiding tooltip');
+                    // Hide tooltip immediately when not hovering
+                    currentHoverBox = null;
+                    tooltip.style.opacity = '0';
+                    tooltip.style.transform = 'translateY(5px)';
+                    redrawCanvas();
+                }
+            });
+            
+            canvas.addEventListener('mouseleave', function() {
+                currentHoverBox = null;
+                tooltip.style.opacity = '0';
+                tooltip.style.transform = 'translateY(5px)';
+                redrawCanvas();
+            });
+        }
+        
+        // Highlight hovered box (only highlight, no text on canvas)
+        function highlightBox(canvas, box) {
+            const ctx = canvas.getContext('2d');
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            
+            // Save current context state
+            ctx.save();
+            
+            // Scale context for device pixel ratio
+            ctx.scale(devicePixelRatio, devicePixelRatio);
+            
+            // Draw highlight box only (no text)
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = Math.max(3, 3 / devicePixelRatio);
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+            
+            // Restore context state
+            ctx.restore();
+        }
+        
+        // Redraw canvas without highlights (optimized - avoid unnecessary redraws)
+        function redrawCanvas() {
+            // Only redraw if there's actually a hover state change
+            if (ocrEditorState.currentImage && ocrEditorState.scaledBoxes) {
+                // Use requestAnimationFrame for smoother performance
+                requestAnimationFrame(() => {
+                    drawOcrCanvas();
+                });
+            }
         }
 
-        // Toggle Detection Boxes
+        // Toggle Detection Boxes (simplified - always show boxes, hover shows text)
         window.toggleDetectionBoxes = function() {
-            ocrEditorState.showBoxes = !ocrEditorState.showBoxes;
+            // This function is kept for compatibility but boxes are always shown now
             drawOcrCanvas();
         };
 
-        // Toggle Text Labels
+        // Toggle Text Labels (simplified - text shown on hover only)
         window.toggleTextLabels = function() {
-            ocrEditorState.showLabels = !ocrEditorState.showLabels;
+            // This function is kept for compatibility but text is shown on hover only
             drawOcrCanvas();
         };
 
